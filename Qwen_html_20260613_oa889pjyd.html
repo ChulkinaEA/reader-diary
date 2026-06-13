@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Классический читательский дневник</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 700px;
+            padding: 30px;
+            position: relative;
+        }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 10px; font-size: 1.5rem; }
+        .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .step { display: none; animation: fadeIn 0.4s ease; }
+        .step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        
+        .book-summary {
+            background: #f9fafb;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+        
+        .rating-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .rating-option {
+            flex: 1;
+            min-width: 80px;
+        }
+        .rating-option input { display: none; }
+        .rating-option label {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .rating-option input:checked + label {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #fef3c7;
+            border-radius: 6px;
+            border: 1px solid #fcd34d;
+        }
+        .checkbox-group input { width: auto; margin: 0; }
+        .checkbox-group label { margin: 0; font-weight: normal; cursor: pointer; }
+
+        .buttons { display: flex; justify-content: space-between; margin-top: 30px; }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-prev { background: #e5e7eb; color: var(--text); }
+        .btn-prev:hover { background: #d1d5db; }
+        .btn-next { background: var(--primary); color: white; }
+        .btn-next:hover { background: var(--primary-hover); }
+        .btn-next:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .hidden { display: none !important; }
+        .success-message { text-align: center; padding: 40px 20px; }
+        .success-message h2 { color: #059669; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 Классический читательский дневник</h1>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <form id="diaryForm">
+        <!-- Шаг 0: Информация о студенте -->
+        <div class="step active" id="step-0">
+            <h2>Давайте знакомиться</h2>
+            <div class="form-group">
+                <label for="studentName">Напиши свое имя и фамилию (при желании)</label>
+                <input type="text" id="studentName" placeholder="Иван Иванов">
+            </div>
+            <div class="form-group">
+                <label for="studentGroup">Назови свою группу</label>
+                <input type="text" id="studentGroup" placeholder="Например: ИС-21" required>
+            </div>
+            <div class="buttons" style="justify-content: flex-end;">
+                <button type="button" class="btn-next" onclick="nextStep()">Начать заполнение</button>
+            </div>
+        </div>
+
+        <!-- Шаги с книгами будут сгенерированы JavaScript -->
+        <div id="booksContainer"></div>
+
+        <!-- Финальный шаг -->
+        <div class="step" id="step-final">
+            <div class="success-message">
+                <h2>✅ Готово!</h2>
+                <p>Ваши ответы успешно сохранены. Спасибо за честную рефлексию!</p>
+                <div class="loader" id="loader"></div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // ⚠️ ВАШ URL ВЕБ-ПРИЛОЖЕНИЯ GOOGLE APPS SCRIPT
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0eSbTJFS7il53IQfKv8wPxn6KG3ULJG4XjxQrxcMyXYR5gViIrCzC_xSdnXWq2mDz/exec";
+
+    const books = [
+        { title: "1. Майк Гелприн, «Свеча горела»", summary: "Будущее. В школах перестали изучать литературу. Робот-гувернёр стал брать уроки у бывшего учителя, чтобы привить детям любовь к литературе. За это робота уничтожили, но учителя нашли его воспитанники." },
+        { title: "2. Дэниел Киз, «Цветы для Элджернона»", summary: "Умственно отсталый уборщик Чарли Гордон соглашается на эксперимент по повышению интеллекта. Он становится гением, но узнает, что эффект временен. Постепенно теряя разум, он обретает эмоциональную глубину и сострадание, оставляя трогательное послание потомкам." },
+        { title: "3. Рэй Брэдбери, «И грянул гром»", summary: "Группа путешественников отправляется в прошлое на сафари к динозаврам со строгим правилом: не сходить с тропы. Один из туристов случайно наступает на бабочку. Возвратившись, они обнаруживают, что это микроскопическое изменение в прошлом радикально и мрачно изменило будущее." },
+        { title: "4. Рэй Брэдбери, «Улыбка»", summary: "Постапокалиптический мир, где люди ненавидят прошлое и разрушают произведения искусства. Мальчик Том пробивается сквозь толпу к разрываемой картине и спасает крошечный фрагмент – улыбку Моны Лизы, сохраняя надежду на возрождение культуры." },
+        { title: "5. Рэй Брэдбери, «Наказание без преступления»", summary: "Антиутопия о мире, где полиция арестовывает людей за преступления, которые они только собираются совершить. Главный герой арестован за будущее убийство, которого он еще не совершал. Произведение ставит вопрос о свободе воли и праве на выбор." },
+        { title: "6. Эдгар Аллан По, «Черный кот»", summary: "Исповедь рассказчика, который под влиянием алкоголизма и тяги к разрушению убивает своего любимого кота, а затем и жену. Он замуровывает тело жены в стене, но полиция находит труп благодаря второму черному коту, чей крик раздается из-за стены." },
+        { title: "7. Натаниэль Готорн, «Молодой Браун»", summary: "Молодой пуританин отправляется ночью в лес на встречу с нечистой силой. Там он становится свидетелем шабаша, на котором видит всех уважаемых людей своего города, включая собственную жену. Потеряв веру в человечество, он проживает остаток жизни в мрачном одиночестве." },
+        { title: "8. Агата Кристи, «Десять негритят»", summary: "Десять незнакомцев с темным прошлым приглашены на изолированный остров. Неизвестный убийца начинает устранять их одного за другим в точном соответствии с текстом детской считалочки. Классический детектив, где преступник находится среди жертв." },
+        { title: "9. Ф.М. Достоевский, «Преступление и наказание»", summary: "Бывший студент Раскольников создает теорию о «право имеющих» и убивает старуху-процентщицу, чтобы проверить ее. Вместо триумфа он сталкивается с муками совести. Путь к искуплению он находит через признание, каторгу и любовь к Соне Мармеладовой." },
+        { title: "10. А.П. Чехов, «Ионыч»", summary: "История деградации личности. Молодой, полный идеалов врач Дмитрий Старцев приезжает в губернский город. Со временем, поддавшись влиянию пошлой среды и лени, он превращается в толстого, раздражительного и скупого обывателя, теряя способность любить и мечтать." },
+        { title: "11. В. Набоков, «Бритва» / «Весна в Фиальте»", summary: "«Бритва»: короткий рассказ с характерным психологическим напряжением. За внешне обыденной ситуацией скрывается нарастающий триллер и латентная жестокость. Рассказчик сталкивается с проявлением скрытой, иррациональной опасности, что приводит к мрачной и неожиданной развязке.<br><br>«Весна в Фиальте»: рассказ о сложной, многолетней и так и не состоявшейся любви рассказчика к русской эмигрантке Нине. Их мимолетные встречи происходят весной в вымышленном средиземноморском городке Фиальта на протяжении нескольких лет, пока оба они состоят в несчастливых браках с другими людьми. Финал трагичен: спустя годы герой узнает о гибели Нины в автокатастрофе и пытается удержать ее ускользающий образ, превращая память о ней и свою утрату в подобие произведения искусства." },
+        { title: "12. А.П. Чехов, «Чайка»", summary: "Пьеса о неразделенной любви и поиске себя в искусстве. Молодой писатель Треплев ищет новые формы, но терпит неудачу и кончает жизнь самоубийством. Его возлюбленная Нина Заречная, несмотря на предательство и тяжелую жизнь, находит в себе силы стать настоящей актрисой." },
+        { title: "13. Е. Замятин, «Мы»", summary: "Роман-антиутопия о Едином Государстве, где у людей нет имен, только номера. Инженер Д-503 встречает бунтарку I-330, которая пробуждает в нем «душу». Несмотря на попытку восстания, Государство побеждает: Д-503 подвергают операции по удалению фантазии, и он предает возлюбленную." },
+        { title: "14. М.А. Булгаков, «Мастер и Маргарита»", summary: "Сатана (Воланд) со свитой прибывает в Москву, чтобы разоблачить человеческие пороки. Параллельно разворачивается история любви Маргариты и Мастера, а также роман Мастера о Понтии Пилате. В финале герои обретают не свет, но «покой» как высшую награду." },
+        { title: "15. М.А. Булгаков, «Пропавший глаз»", summary: "Сатирический и гротескный ранний рассказ. В абсурдной ситуации герой сталкивается с потерей глаза, что становится поводом для высмеивания бюрократии, человеческой глупости и нелепости бытовых ситуаций, показывая, как легко человек может лишиться важного из-за хаоса мира." }
+    ];
+
+    let currentStep = 0;
+    const totalSteps = books.length + 1;
+
+    const container = document.getElementById('booksContainer');
+    books.forEach((book, index) => {
+        const stepNum = index + 1;
+        const div = document.createElement('div');
+        div.className = 'step';
+        div.id = `step-${stepNum}`;
+        div.innerHTML = `
+            <h2>${book.title}</h2>
+            <div class="book-summary"><strong>Краткое содержание:</strong><br>${book.summary}</div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="skip-${stepNum}" onchange="toggleQuestions(${stepNum})">
+                <label for="skip-${stepNum}">Я не читал(а) это произведение (пропустить вопросы)</label>
+            </div>
+
+            <div id="questions-${stepNum}">
+                <div class="form-group">
+                    <label>1. Оценка произведения:</label>
+                    <div class="rating-group">
+                        <div class="rating-option"><input type="radio" name="rating-${stepNum}" id="r1-${stepNum}" value="1/5"><label for="r1-${stepNum}">1/5<br><small>Потеря времени</small></label></div>
+                        <div class="rating-option"><input type="radio" name="rating-${stepNum}" id="r2-${stepNum}" value="2/5"><label for="r2-${stepNum}">2/5<br><small>Скучно</small></label></div>
+                        <div class="rating-option"><input type="radio" name="rating-${stepNum}" id="r3-${stepNum}" value="3/5"><label for="r3-${stepNum}">3/5<br><small>Нормально</small></label></div>
+                        <div class="rating-option"><input type="radio" name="rating-${stepNum}" id="r4-${stepNum}" value="4/5"><label for="r4-${stepNum}">4/5<br><small>Хорошо</small></label></div>
+                        <div class="rating-option"><input type="radio" name="rating-${stepNum}" id="r5-${stepNum}" value="5/5"><label for="r5-${stepNum}">5/5<br><small>Шедевр!</small></label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>2. Понравилось ли вам читать это произведение? Какие чувства оно вызвало? (1-2 предложения)</label>
+                    <textarea id="q1-${stepNum}" placeholder="Ваши мысли..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>3. Стоит ли такое читать в наше время? Актуальна ли проблематика сегодня?</label>
+                    <textarea id="q2-${stepNum}" placeholder="Ваш ответ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>4. Порекомендовали бы вы это произведение друзьям? Если да, то кому? Если нет, то почему?</label>
+                    <textarea id="q3-${stepNum}" placeholder="Ваш ответ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>5. Одна мысль или фраза из текста, которая запомнилась больше всего.</label>
+                    <textarea id="q4-${stepNum}" placeholder="Цитата или мысль..."></textarea>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button type="button" class="btn-prev" onclick="prevStep()">Назад</button>
+                <button type="button" class="btn-next" onclick="nextStep()">${stepNum === books.length ? 'Завершить' : 'Далее'}</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+
+    function updateProgress() {
+        const percent = (currentStep / totalSteps) * 100;
+        document.getElementById('progressFill').style.width = `${percent}%`;
+    }
+
+    function showStep(n) {
+        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+        if (n === totalSteps) {
+            document.getElementById('step-final').classList.add('active');
+            submitAllData();
+        } else {
+            document.getElementById(`step-${n}`).classList.add('active');
+        }
+        updateProgress();
+        window.scrollTo(0, 0);
+    }
+
+    function nextStep() {
+        if (currentStep === 0) {
+            const group = document.getElementById('studentGroup').value.trim();
+            if (!group) {
+                alert('Пожалуйста, укажите вашу группу.');
+                return;
+            }
+        }
+        currentStep++;
+        showStep(currentStep);
+    }
+
+    function prevStep() {
+        if (currentStep > 0) {
+            currentStep--;
+            showStep(currentStep);
+        }
+    }
+
+    function toggleQuestions(stepNum) {
+        const checkbox = document.getElementById(`skip-${stepNum}`);
+        const questionsDiv = document.getElementById(`questions-${stepNum}`);
+        if (checkbox.checked) {
+            questionsDiv.classList.add('hidden');
+        } else {
+            questionsDiv.classList.remove('hidden');
+        }
+    }
+
+    async function submitAllData() {
+        const loader = document.getElementById('loader');
+        loader.style.display = 'block';
+        
+        const name = document.getElementById('studentName').value.trim() || 'Аноним';
+        const group = document.getElementById('studentGroup').value.trim();
+
+        const results = [];
+
+        for (let i = 1; i <= books.length; i++) {
+            const isSkipped = document.getElementById(`skip-${i}`).checked;
+            const bookTitle = books[i-1].title;
+            
+            let payload = {
+                name: name,
+                group: group,
+                bookTitle: bookTitle,
+                status: isSkipped ? "Не читал" : "Прочитано"
+            };
+
+            if (!isSkipped) {
+                const ratingEl = document.querySelector(`input[name="rating-${i}"]:checked`);
+                payload.rating = ratingEl ? ratingEl.value : "Не указано";
+                payload.q1 = document.getElementById(`q1-${i}`).value.trim() || "-";
+                payload.q2 = document.getElementById(`q2-${i}`).value.trim() || "-";
+                payload.q3 = document.getElementById(`q3-${i}`).value.trim() || "-";
+                payload.q4 = document.getElementById(`q4-${i}`).value.trim() || "-";
+            } else {
+                payload.rating = "-";
+                payload.q1 = "-";
+                payload.q2 = "-";
+                payload.q3 = "-";
+                payload.q4 = "-";
+            }
+
+            try {
+                // Отправляем данные как URLSearchParams (самый надёжный способ для Google Apps Script)
+                const params = new URLSearchParams();
+                Object.keys(payload).forEach(key => {
+                    params.append(key, payload[key]);
+                });
+
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: params
+                });
+                results.push({book: bookTitle, status: 'sent'});
+            } catch (error) {
+                console.error('Ошибка отправки для', bookTitle, error);
+                results.push({book: bookTitle, status: 'error', error: error.message});
+            }
+        }
+
+        loader.style.display = 'none';
+        
+        // Проверяем результаты
+        const errors = results.filter(r => r.status === 'error');
+        if (errors.length === 0) {
+            document.querySelector('.success-message p').innerHTML = 
+                `✅ Ваши ответы успешно сохранены!<br>
+                <small>Отправлено записей: ${results.length}</small>`;
+        } else {
+            document.querySelector('.success-message p').innerHTML = 
+                `⚠️ Часть данных не удалось отправить.<br>
+                <small>Ошибок: ${errors.length} из ${results.length}</small>`;
+            document.querySelector('.success-message h2').style.color = '#d97706';
+        }
+    }
+
+    // Инициализация
+    updateProgress();
+</script>
+
+</body>
+</html>
